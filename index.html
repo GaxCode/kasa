@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101412">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Kasa Sayacı">
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Kasa%20Para%20Sayac%C4%B1%22%2C%22short_name%22%3A%22Kasa%20Sayac%C4%B1%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23101412%22%2C%22theme_color%22%3A%22%23101412%22%7D">
+  <title>Kasa Para Sayacı</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101412;
+      --panel: #191f1b;
+      --panel-soft: #202822;
+      --border: #303a33;
+      --text: #f3f6f2;
+      --muted: #a5afa7;
+      --green: #76e0a1;
+      --green-dark: #153e29;
+      --yellow: #f5ca62;
+      --red: #ff8585;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0 16px calc(28px + var(--safe-bottom));
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 50% -20%, rgba(69, 137, 91, .17), transparent 48%),
+        var(--bg);
+    }
+
+    button, input { font: inherit; }
+    button { touch-action: manipulation; }
+
+    .app {
+      width: min(100%, 560px);
+      margin: 0 auto;
+      padding-top: max(18px, env(safe-area-inset-top, 0px));
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    h1, h2, p { margin-top: 0; }
+    h1 { margin-bottom: 3px; font-size: 1.35rem; letter-spacing: -.03em; }
+    h2 { margin-bottom: 14px; font-size: 1.05rem; }
+    .subtitle, .muted { color: var(--muted); }
+    .subtitle { margin-bottom: 0; font-size: .88rem; }
+
+    .icon-button, .button {
+      min-height: 56px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      color: var(--text);
+      background: var(--panel-soft);
+      cursor: pointer;
+    }
+
+    .icon-button { min-width: 56px; padding: 0 14px; font-size: 1.3rem; }
+    .button { padding: 12px 16px; font-weight: 750; }
+    .button:disabled { opacity: .55; cursor: wait; }
+    .button-primary { width: 100%; border-color: transparent; color: #0c1a11; background: var(--green); }
+    .button-secondary { width: 100%; }
+    .button-danger { color: var(--red); }
+
+    .card {
+      margin-bottom: 14px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(25, 31, 27, .94);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, .12);
+    }
+
+    .camera-frame {
+      position: relative;
+      display: grid;
+      min-height: 210px;
+      overflow: hidden;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #0b0e0c;
+    }
+
+    video, .preview-image {
+      display: block;
+      width: 100%;
+      max-height: min(58vh, 440px);
+      object-fit: contain;
+      background: #080a09;
+    }
+
+    .camera-placeholder {
+      padding: 24px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .camera-actions { display: grid; gap: 10px; margin-top: 14px; }
+    .camera-actions .button-primary { min-height: 64px; font-size: 1.03rem; letter-spacing: .01em; }
+    .preview-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+
+    .message {
+      display: none;
+      margin: 12px 0 0;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      color: var(--muted);
+      background: #161b18;
+      line-height: 1.45;
+    }
+
+    .message.visible { display: block; }
+    .message.error { border-color: rgba(255, 133, 133, .42); color: #ffc0c0; }
+    .message.warning { border-color: rgba(245, 202, 98, .46); color: #ffe49d; background: #332c18; }
+    .message.success { border-color: rgba(118, 224, 161, .36); color: #b8f3cb; }
+    .hidden { display: none !important; }
+
+    .summary-total { margin: 0; color: var(--green); font-size: clamp(2.2rem, 10vw, 3.3rem); font-weight: 850; letter-spacing: -.05em; line-height: 1.1; }
+    .summary-label { margin: 0 0 8px; color: var(--muted); font-size: .84rem; font-weight: 700; letter-spacing: .08em; }
+    .summary-count { margin: 8px 0 0; color: var(--muted); }
+    .denomination-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 15px 0 0; padding: 0; list-style: none; }
+    .denomination-list li { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; gap: 4px; padding: 9px; border: 1px solid var(--border); border-radius: 12px; color: #dbe2dc; font-size: .86rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .denomination-list .zero-row { color: #7f8a82; }
+
+    .party { margin-top: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: #151a17; }
+    .party-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .party-title { margin: 0; font-weight: 750; }
+    .party-meta { margin: 4px 0 0; color: var(--muted); font-size: .84rem; }
+    .delete-button { min-height: 56px; padding: 7px 12px; border: 1px solid #553434; border-radius: 11px; color: #ffaaaa; background: #2d1c1c; cursor: pointer; }
+    .edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .quantity-card { display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; gap: 7px; min-width: 0; min-height: 84px; padding: 6px; border: 1px solid #29312b; border-radius: 13px; }
+    .edit-label { font-size: .93rem; font-weight: 650; }
+    .edit-value { min-width: 0; text-align: center; font-variant-numeric: tabular-nums; }
+    .quantity-head { display: flex; min-width: 0; align-items: center; }
+    .quantity-label { min-width: 0; font-size: .88rem; font-weight: 650; overflow-wrap: anywhere; }
+    .quantity-actions, .manual-input-wrap { display: grid; grid-template-columns: 28px minmax(0, 1fr) 28px; align-items: center; gap: 4px; }
+    .step-button { min-width: 0; min-height: 48px; border: 1px solid var(--border); border-radius: 11px; color: var(--text); background: var(--panel-soft); font-size: 1.2rem; cursor: pointer; }
+    .step-button:disabled { opacity: .4; cursor: not-allowed; }
+    .quantity-input, .manual-input-wrap input[type="number"] {
+      width: 100%;
+      min-width: 0;
+      min-height: 44px;
+      padding: 5px 2px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      color: var(--text);
+      background: #101512;
+      font-size: .95rem;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      appearance: textfield;
+    }
+    .quantity-input::-webkit-inner-spin-button, .quantity-input::-webkit-outer-spin-button,
+    .manual-input-wrap input[type="number"]::-webkit-inner-spin-button,
+    .manual-input-wrap input[type="number"]::-webkit-outer-spin-button { margin: 0; appearance: none; }
+    .empty-state { margin: 0; color: var(--muted); text-align: center; }
+    .settings-card label { display: block; margin: 14px 0 7px; font-size: .9rem; font-weight: 650; }
+    .settings-card input[type="password"], .settings-card select {
+      width: 100%;
+      min-height: 54px;
+      padding: 10px 13px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      color: var(--text);
+      background: #101512;
+    }
+    .settings-card select { color-scheme: dark; }
+    .settings-hint { margin: 7px 0 0; color: var(--muted); font-size: .78rem; line-height: 1.45; }
+
+    .manual-form { display: grid; gap: 8px; }
+    #manual-banknotes, #manual-coins { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .manual-form .edit-row { min-height: 0; padding: 8px; }
+    .manual-form .edit-label { display: block; }
+    .manual-total { margin: 12px 0; color: var(--green); font-size: 1.25rem; font-weight: 800; }
+    .manual-group-title { margin: 18px 0 4px; color: var(--muted); font-size: .82rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+    .fallback-note { margin-top: 8px; font-size: .84rem; }
+    .settings-buttons { display: grid; gap: 9px; margin-top: 14px; }
+    .fine-print { margin: 12px 0 0; color: var(--muted); font-size: .78rem; line-height: 1.5; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .section-head h2 { margin-bottom: 0; }
+    .reset-button { min-height: 56px; padding: 7px 12px; border: 1px solid #553434; border-radius: 11px; color: #ffaaaa; background: #2d1c1c; cursor: pointer; }
+    .busy { display: inline-flex; align-items: center; gap: 9px; }
+    .spinner { width: 17px; height: 17px; border: 2px solid rgba(9, 30, 17, .3); border-top-color: #102417; border-radius: 50%; animation: spin .8s linear infinite; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (min-width: 520px) {
+      body { padding-right: 22px; padding-left: 22px; }
+      .card { padding: 20px; }
+    }
+
+    @media (max-width: 380px) {
+      .edit-grid { grid-template-columns: minmax(0, 1fr); }
+      .quantity-actions { grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 8px; }
+    }
+
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>Kasa Para Sayacı</h1>
+        <p class="subtitle">Banknot ve madeni paralarını say.</p>
+      </div>
+      <button class="icon-button" id="settings-toggle" type="button" aria-label="Ayarları aç" title="Ayarlar">⚙</button>
+    </header>
+
+    <section class="card" aria-labelledby="camera-heading">
+      <h2 id="camera-heading">Fotoğraf çek</h2>
+      <p class="message visible warning">Kamera için siteyi HTTPS üzerinden açın. Daha doğru sonuç için banknotları ve madeni paraları ayrı ayrı, birbirinin üstünü kapatmadan dizin.</p>
+      <div class="camera-frame">
+        <video id="camera" autoplay playsinline muted class="hidden" aria-label="Kamera görüntüsü"></video>
+        <img id="preview-image" class="preview-image hidden" alt="Sayılacak fotoğrafın önizlemesi">
+        <div id="camera-placeholder" class="camera-placeholder">Kamera başlatılıyor…</div>
+      </div>
+      <div id="camera-actions" class="camera-actions">
+        <button id="capture-button" class="button button-primary" type="button">FOTOĞRAF ÇEK VE SAY</button>
+        <button id="gallery-button" class="button button-secondary" type="button">Galeriden fotoğraf seç</button>
+      </div>
+      <div id="preview-actions" class="preview-actions hidden">
+        <button id="retake-button" class="button button-secondary" type="button">Tekrar Çek</button>
+        <button id="add-button" class="button button-primary" type="button">Say ve kontrol et</button>
+        <button id="change-image-button" class="button button-secondary" type="button">Başka fotoğraf seç</button>
+      </div>
+      <div id="review-panel" class="card hidden" aria-label="Yapay zeka ön sayımını kontrol et">
+        <p class="message visible warning">Bu bir yapay zeka ön sayımıdır; özellikle üst üste duran banknotlarda eksik sayabilir. Fotoğrafla karşılaştırın ve gerekirse adetleri düzeltin.</p>
+        <p id="review-model" class="party-meta"></p>
+        <p id="review-total" class="party-title"></p>
+        <div id="review-counts" class="edit-grid"></div>
+        <div class="camera-actions">
+          <button id="confirm-count-button" class="button button-primary" type="button">Kontrol ettim, partiye ekle</button>
+          <button id="review-retake-button" class="button button-secondary" type="button">Tekrar çek</button>
+        </div>
+      </div>
+      <input id="file-input" class="hidden" type="file" accept="image/*" capture="environment" aria-label="Galeriden fotoğraf seç">
+      <p id="camera-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="card" aria-labelledby="manual-heading">
+      <h2 id="manual-heading">Elle adet gir</h2>
+      <p class="subtitle">Banknot ve madeni para adetlerini yaz. Her ekleme ayrı parti olur; önceki sayımlar korunur.</p>
+      <form id="manual-form" class="manual-form">
+        <p class="manual-group-title">Banknotlar</p>
+        <div id="manual-banknotes"></div>
+        <p class="manual-group-title">Madeni paralar</p>
+        <div id="manual-coins"></div>
+        <p id="manual-total" class="manual-total">Bu ekleme: 0 ₺</p>
+        <p id="manual-message" class="message" role="status" aria-live="polite"></p>
+        <button class="button button-primary" type="submit">Elle eklediğim paraları partiye ekle</button>
+        </form>
+    </section>
+
+    <section id="settings-card" class="card settings-card hidden" aria-labelledby="settings-heading">
+      <h2 id="settings-heading">Gemini ayarları</h2>
+      <form id="settings-form">
+        <label for="api-key">Gemini API anahtarı</label>
+        <input id="api-key" type="password" autocomplete="new-password" aria-describedby="api-key-status">
+        <p id="api-key-status" class="settings-hint"></p>
+        <label for="model-name">Model adı</label>
+        <select id="model-name">
+          <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite — önerilen</option>
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+          <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+          <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+        </select>
+        <p class="settings-hint">Listede fotoğraf analizini destekleyen Gemini modelleri bulunur. Ücretsiz kullanım ve limitler Google hesabınıza, bölgenize ve güncel kota durumuna göre değişebilir.</p>
+        <div class="settings-buttons">
+          <button class="button button-primary" type="submit">Kaydet</button>
+          <button id="clear-key-button" class="button button-secondary button-danger" type="button">Anahtarı sil</button>
+        </div>
+      </form>
+      <p class="fine-print">Anahtarınız ve model tercihiniz yalnızca bu tarayıcının localStorage alanında saklanır. Fotoğraf, sayım için doğrudan Google Gemini API'sine gönderilir. GitHub Pages üzerinde API anahtarınızı kimseyle paylaşmayın.</p>
+      <p id="settings-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="card" aria-labelledby="summary-heading">
+      <p class="summary-label" id="summary-heading">GENEL TOPLAM</p>
+      <p id="grand-total" class="summary-total">0 ₺</p>
+      <p id="note-count" class="summary-count">0 adet</p>
+      <ul id="summary-breakdown" class="denomination-list" aria-label="Banknot ve madeni para toplamları"></ul>
+      <p id="uncertain-warning" class="message warning" role="status"></p>
+    </section>
+
+    <section class="card" aria-labelledby="parties-heading">
+      <div class="section-head">
+        <h2 id="parties-heading">Sayım partileri</h2>
+        <button id="reset-button" class="reset-button" type="button">Sıfırla</button>
+      </div>
+      <div id="parties-list" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    // Banknot türleri tek noktadan değiştirilerek arayüz ve toplam hesapları güncellenir.
+    const BANKNOT_TURLERI = [5, 10, 20, 50, 100, 200, 500, 1000];
+    const MADENI_PARA_TURLERI = [
+      { value: 1, key: "1_kurus", label: "1 kuruş" },
+      { value: 5, key: "5_kurus", label: "5 kuruş" },
+      { value: 10, key: "10_kurus", label: "10 kuruş" },
+      { value: 25, key: "25_kurus", label: "25 kuruş" },
+      { value: 50, key: "50_kurus", label: "50 kuruş" },
+      { value: 100, key: "1_tl", label: "1 TL" }
+    ];
+    const DEFAULT_MODEL = "gemini-3.1-flash-lite";
+    const PREVIOUS_DEFAULT_MODEL = "gemini-2.5-flash";
+    const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
+    const STORAGE_KEY = "kasaSayaciAyarlar";
+    const SAYIM_TALIMATI = 'Fotoğraftaki Türk Lirası banknotlarını VE madeni paraları say. Önce tam görüntüye bak, sonra ekli yakın plan kırpımları kullanarak detayları kontrol et. Yakın planlar aynı fotoğrafın bölgeleridir; yeni para değildir ve sayıya ayrıca eklenmemelidir. Yelpaze/deste halinde her fiziksel banknotu yalnızca bir kez say: dışarı taşan her ayrı kâğıt ucunu soldan sağa takip et, sıkışık merkezde görünen paralel kenarları kontrol et. Aynı banknotun iki yüzünü veya kenarını iki ayrı banknot sayma. Kısmen görünenleri say, tamamen gizli olanları tahmin etme. Kupürü görünen sayı/tasarımdan belirle; emin olmadığın banknotları belirsiz say. Madeni paraları türlerine göre ayrı say: 1, 5, 10, 25, 50 kuruş ve 1 TL. Aynı parayı yakın planlarda tekrar sayma. Son kontrol yap. Cevabı SADECE şu JSON formatında ver: {"banknotlar": {"5":0,"10":0,"20":0,"50":0,"100":0,"200":0,"500":0,"1000":0}, "madeni_paralar": {"1_kurus":0,"5_kurus":0,"10_kurus":0,"25_kurus":0,"50_kurus":0,"1_tl":0}, "belirsiz": 0, "not": ""}';
+    const DOGRULAMA_TALIMATI = 'Bu görüntü grubunu bağımsız olarak yeniden say. İlk görüntü tüm sahne; sonraki yakın planlar aynı fotoğrafın kırpımlarıdır, ek para değildir. Kırpımları toplam olarak birleştirme. Her ayrı banknot ucunu soldan sağa say, aynı banknotı iki kere sayma; madeni paraları 1, 5, 10, 25, 50 kuruş ve 1 TL olarak ayrı ayrı say. Tamamen gizli paraları tahmin etme, belirsiz banknotları belirsiz say. Cevabı SADECE şu JSON formatında ver: {"banknotlar": {"5":0,"10":0,"20":0,"50":0,"100":0,"200":0,"500":0,"1000":0}, "madeni_paralar": {"1_kurus":0,"5_kurus":0,"10_kurus":0,"25_kurus":0,"50_kurus":0,"1_tl":0}, "belirsiz": 0, "not": ""}';
+
+    const el = {
+      camera: document.getElementById("camera"),
+      cameraPlaceholder: document.getElementById("camera-placeholder"),
+      cameraActions: document.getElementById("camera-actions"),
+      captureButton: document.getElementById("capture-button"),
+      galleryButton: document.getElementById("gallery-button"),
+      changeImageButton: document.getElementById("change-image-button"),
+      fileInput: document.getElementById("file-input"),
+      preview: document.getElementById("preview-image"),
+      previewActions: document.getElementById("preview-actions"),
+      addButton: document.getElementById("add-button"),
+      retakeButton: document.getElementById("retake-button"),
+      manualForm: document.getElementById("manual-form"),
+      manualBanknotes: document.getElementById("manual-banknotes"),
+      manualCoins: document.getElementById("manual-coins"),
+      manualTotal: document.getElementById("manual-total"),
+      manualMessage: document.getElementById("manual-message"),
+      reviewPanel: document.getElementById("review-panel"),
+      reviewModel: document.getElementById("review-model"),
+      reviewTotal: document.getElementById("review-total"),
+      reviewCounts: document.getElementById("review-counts"),
+      confirmCountButton: document.getElementById("confirm-count-button"),
+      reviewRetakeButton: document.getElementById("review-retake-button"),
+      cameraMessage: document.getElementById("camera-message"),
+      settingsToggle: document.getElementById("settings-toggle"),
+      settingsCard: document.getElementById("settings-card"),
+      settingsForm: document.getElementById("settings-form"),
+      apiKey: document.getElementById("api-key"),
+      modelName: document.getElementById("model-name"),
+      apiKeyStatus: document.getElementById("api-key-status"),
+      clearKeyButton: document.getElementById("clear-key-button"),
+      settingsMessage: document.getElementById("settings-message"),
+      grandTotal: document.getElementById("grand-total"),
+      noteCount: document.getElementById("note-count"),
+      breakdown: document.getElementById("summary-breakdown"),
+      uncertainWarning: document.getElementById("uncertain-warning"),
+      parties: document.getElementById("parties-list"),
+      resetButton: document.getElementById("reset-button")
+    };
+
+    const countFormatter = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 });
+    const amountFormatter = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    let settings = { apiKey: "", model: DEFAULT_MODEL };
+    let cameraStream = null;
+    let pendingPhoto = null;
+    let pendingReview = null;
+    let shownPreviewUrl = null;
+    let isCounting = false;
+    let wakeLock = null;
+    let parties = [];
+    let nextPartyId = 1;
+
+    function emptyCounts() {
+      return Object.fromEntries(BANKNOT_TURLERI.map((value) => [String(value), 0]));
+    }
+
+    function emptyCoinCounts() {
+      return Object.fromEntries(MADENI_PARA_TURLERI.map((coin) => [coin.key, 0]));
+    }
+
+    function createManualInput(container, type, key, label) {
+      const row = makeElement("div", "edit-row");
+      const input = document.createElement("input");
+      const inputId = `manual-${type}-${key}`;
+      input.type = "number";
+      input.inputMode = "numeric";
+      input.min = "0";
+      input.max = String(Number.MAX_SAFE_INTEGER);
+      input.step = "1";
+      input.value = "0";
+      input.id = inputId;
+      input.dataset.moneyType = type;
+      input.dataset.moneyKey = key;
+      input.setAttribute("aria-label", `${label} adedi`);
+      input.addEventListener("input", updateManualTotal);
+      const textLabel = makeElement("label", "edit-label", label);
+      textLabel.htmlFor = inputId;
+      const controls = makeElement("div", "manual-input-wrap");
+      const minus = makeElement("button", "step-button", "−");
+      minus.type = "button";
+      minus.disabled = true;
+      minus.setAttribute("aria-label", `${label} sayısını azalt`);
+      minus.addEventListener("click", () => {
+        input.value = String(Math.max(0, (input.valueAsNumber || 0) - 1));
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      const plus = makeElement("button", "step-button", "+");
+      plus.type = "button";
+      plus.setAttribute("aria-label", `${label} sayısını artır`);
+      plus.addEventListener("click", () => {
+        const value = input.value === "" ? 0 : input.valueAsNumber;
+        if (Number.isSafeInteger(value) && value < Number.MAX_SAFE_INTEGER) {
+          input.value = String(value + 1);
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      });
+      controls.append(minus, input, plus);
+      row.append(textLabel, controls);
+      container.append(row);
+    }
+
+    function createStepperCard(label, value, onDecrease, onIncrease, onSetValue, onCommit, options = {}) {
+      const card = makeElement("div", "quantity-card");
+      const head = makeElement("div", "quantity-head");
+      head.append(makeElement("span", "quantity-label", label));
+      const actions = makeElement("div", "quantity-actions");
+      const minus = makeElement("button", "step-button", "−");
+      minus.type = "button";
+      minus.disabled = options.disableMinus === true || value === 0;
+      minus.setAttribute("aria-label", `${label} sayısını azalt`);
+      const input = document.createElement("input");
+      input.className = "quantity-input";
+      input.type = "number";
+      input.inputMode = "numeric";
+      input.min = "0";
+      input.max = String(Number.MAX_SAFE_INTEGER);
+      input.step = "1";
+      input.value = String(value);
+      input.setAttribute("aria-label", `${label} adedi`);
+      const syncInputValue = () => {
+        const nextValue = input.value === "" ? 0 : input.valueAsNumber;
+        if (!Number.isSafeInteger(nextValue) || nextValue < 0) {
+          input.setCustomValidity("Sıfır veya daha büyük tam sayı girin.");
+          return false;
+        }
+        input.setCustomValidity("");
+        onSetValue(nextValue);
+        minus.disabled = options.disableMinus === true || nextValue === 0;
+        plus.disabled = nextValue === Number.MAX_SAFE_INTEGER;
+        return true;
+      };
+      input.addEventListener("input", syncInputValue);
+      input.addEventListener("change", () => {
+        if (syncInputValue()) onCommit();
+        else input.reportValidity();
+      });
+      minus.addEventListener("pointerdown", (event) => event.preventDefault());
+      minus.addEventListener("click", () => {
+        if (syncInputValue()) onDecrease();
+      });
+      const plus = makeElement("button", "step-button", "+");
+      plus.type = "button";
+      plus.disabled = value === Number.MAX_SAFE_INTEGER;
+      plus.setAttribute("aria-label", `${label} sayısını artır`);
+      plus.addEventListener("pointerdown", (event) => event.preventDefault());
+      plus.addEventListener("click", () => {
+        if (syncInputValue()) onIncrease();
+      });
+      actions.append(minus, input, plus);
+      card.append(head, actions);
+      return card;
+    }
+
+    function initializeManualInputs() {
+      for (const denomination of BANKNOT_TURLERI) {
+        createManualInput(el.manualBanknotes, "banknote", String(denomination), `${denomination} TL`);
+      }
+      for (const coin of MADENI_PARA_TURLERI) {
+        createManualInput(el.manualCoins, "coin", coin.key, coin.label);
+      }
+      updateManualTotal();
+    }
+
+    function getManualCounts(type, values) {
+      for (const input of el.manualForm.querySelectorAll(`input[data-money-type="${type}"]`)) {
+        const value = input.value === "" ? 0 : input.valueAsNumber;
+        if (!Number.isSafeInteger(value) || value < 0) {
+          input.setCustomValidity("Sıfır veya daha büyük tam sayı girin.");
+          throw new Error("Adetler sıfır veya daha büyük tam sayı olmalıdır.");
+        }
+        input.setCustomValidity("");
+        values[input.dataset.moneyKey] = value;
+      }
+      return values;
+    }
+
+    function countPartyItems(counts, coinCounts, uncertain) {
+      return BANKNOT_TURLERI.reduce((sum, denomination) => sum + countValue(counts, String(denomination)), uncertain) +
+        MADENI_PARA_TURLERI.reduce((sum, coin) => sum + countValue(coinCounts, coin.key), 0);
+    }
+
+    function amountInKurus(counts, coinCounts) {
+      return BANKNOT_TURLERI.reduce((sum, denomination) => sum + denomination * 100 * countValue(counts, String(denomination)), 0) +
+        MADENI_PARA_TURLERI.reduce((sum, coin) => sum + coin.value * countValue(coinCounts, coin.key), 0);
+    }
+
+    function updateManualTotal() {
+      try {
+        const counts = getManualCounts("banknote", emptyCounts());
+        const coinCounts = getManualCounts("coin", emptyCoinCounts());
+        el.manualTotal.textContent = `Bu ekleme: ${formatMoney(amountInKurus(counts, coinCounts))}`;
+      } catch (error) {
+        el.manualTotal.textContent = "Adetleri kontrol edin.";
+      }
+      for (const row of el.manualForm.querySelectorAll(".manual-input-wrap")) {
+        const input = row.querySelector('input[type="number"]');
+        row.querySelector(".step-button").disabled = input.value === "" || input.valueAsNumber <= 0;
+      }
+    }
+
+    function addManualParty(event) {
+      event.preventDefault();
+      if (!el.manualForm.reportValidity()) return;
+      try {
+        const counts = getManualCounts("banknote", emptyCounts());
+        const coinCounts = getManualCounts("coin", emptyCoinCounts());
+        if (countPartyItems(counts, coinCounts, 0) === 0) {
+          showMessage(el.manualMessage, "Parti eklemek için en az bir banknot veya madeni para adedi girin.", "warning");
+          return;
+        }
+        parties.unshift({
+          id: nextPartyId++,
+          fingerprint: null,
+          counts,
+          coinCounts,
+          uncertain: 0,
+          note: "Elle girildi",
+          createdAt: new Date()
+        });
+        el.manualForm.reset();
+        for (const input of el.manualForm.querySelectorAll('input[type="number"]')) input.value = "0";
+        updateManualTotal();
+        render();
+        showMessage(el.manualMessage, "Elle girdiğiniz adetler yeni bir parti olarak eklendi.", "success");
+      } catch (error) {
+        showMessage(el.manualMessage, error.message || "Adetler eklenemedi.", "error");
+      }
+    }
+
+    function formatMoney(amount) {
+      return `${amountFormatter.format(amount / 100)} ₺`;
+    }
+
+    function countValue(counts, key) {
+      const value = counts && counts[key];
+      return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+    }
+
+    function showMessage(target, text, kind) {
+      target.textContent = text;
+      target.className = `message visible${kind ? ` ${kind}` : ""}`;
+    }
+
+    function clearMessage(target) {
+      target.textContent = "";
+      target.className = "message";
+    }
+
+    function readSettings() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return;
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") {
+          settings.apiKey = typeof parsed.apiKey === "string" ? parsed.apiKey : "";
+          settings.model = typeof parsed.model === "string" && parsed.model.trim()
+            ? parsed.model.trim() === PREVIOUS_DEFAULT_MODEL ? DEFAULT_MODEL : parsed.model.trim()
+            : DEFAULT_MODEL;
+        }
+      } catch (error) {
+        showMessage(el.settingsMessage, "Kayıtlı ayarlar okunamadı. Tarayıcı depolama izinlerini kontrol edin.", "error");
+      }
+    }
+
+    function updateApiKeyStatus() {
+      if (settings.apiKey) {
+        el.apiKey.placeholder = "Kayıtlı anahtar korunuyor; değiştirmek için yeni anahtar girin";
+        el.apiKeyStatus.textContent = "Bu tarayıcıda bir API anahtarı kayıtlı. Alanı boş bırakırsanız anahtar değişmeden kalır.";
+      } else {
+        el.apiKey.placeholder = "API anahtarınızı girin";
+        el.apiKeyStatus.textContent = "Henüz bu tarayıcıda API anahtarı kayıtlı değil.";
+      }
+    }
+
+    function saveSettings(event) {
+      event.preventDefault();
+      const enteredApiKey = el.apiKey.value.trim();
+      const apiKey = enteredApiKey || settings.apiKey;
+      const model = el.modelName.value.trim();
+      if (!model) {
+        showMessage(el.settingsMessage, "Model adı boş bırakılamaz.", "error");
+        el.modelName.focus();
+        return;
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey, model }));
+        settings = { apiKey, model };
+        el.apiKey.value = "";
+        updateApiKeyStatus();
+        showMessage(el.settingsMessage, "Ayarlar bu tarayıcıya kaydedildi.", "success");
+        if (apiKey) el.settingsCard.classList.add("hidden");
+      } catch (error) {
+        showMessage(el.settingsMessage, "Ayarlar kaydedilemedi. Tarayıcı depolama alanı kullanılamıyor.", "error");
+      }
+    }
+
+    function clearApiKey() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey: "", model: settings.model }));
+        settings.apiKey = "";
+        el.apiKey.value = "";
+        updateApiKeyStatus();
+        showMessage(el.settingsMessage, "API anahtarı bu tarayıcıdan silindi.", "success");
+      } catch (error) {
+        showMessage(el.settingsMessage, "Anahtar silinemedi. Tarayıcı depolama alanı kullanılamıyor.", "error");
+      }
+    }
+
+    function setCameraPlaceholder(text) {
+      el.cameraPlaceholder.textContent = text;
+      el.cameraPlaceholder.classList.remove("hidden");
+      el.camera.classList.add("hidden");
+    }
+
+    async function requestWakeLock() {
+      if (!("wakeLock" in navigator) || document.visibilityState !== "visible") return;
+      try {
+        wakeLock = await navigator.wakeLock.request("screen");
+      } catch (error) {
+        // Ekran kilidi isteği desteklenmeyebilir veya tarayıcı tarafından reddedilebilir.
+      }
+    }
+
+    async function startCamera() {
+      if (!window.isSecureContext) {
+        el.captureButton.textContent = "Kamera için HTTPS gerekli";
+        setCameraPlaceholder("Kamera için HTTPS gerekir. GitHub Pages bağlantısını açın veya galeriden fotoğraf seçin.");
+        showMessage(el.cameraMessage, "Bu sayfa güvenli bağlantıda değil; yerel dosya olarak açıldığında tarayıcı kamera izni vermez. Galeri seçimi kullanılabilir.", "warning");
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        el.captureButton.textContent = "Kamera kullanılamıyor";
+        setCameraPlaceholder("Bu tarayıcı kamerayı desteklemiyor. Galeriden fotoğraf seçebilirsiniz.");
+        showMessage(el.cameraMessage, "Kamera kullanılamıyor; galeriden fotoğraf seçin.", "warning");
+        return;
+      }
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1920 }
+          }
+        });
+        el.camera.srcObject = cameraStream;
+        await el.camera.play();
+        el.camera.classList.remove("hidden");
+        el.cameraPlaceholder.classList.add("hidden");
+        el.captureButton.textContent = "FOTOĞRAF ÇEK VE SAY";
+        if (!pendingPhoto && shownPreviewUrl) {
+          URL.revokeObjectURL(shownPreviewUrl);
+          shownPreviewUrl = null;
+          el.preview.removeAttribute("src");
+          el.preview.classList.add("hidden");
+        }
+        if (!pendingPhoto) clearMessage(el.cameraMessage);
+        await requestWakeLock();
+      } catch (error) {
+        stopCamera();
+        setCameraPlaceholder("Kamera açılamadı. Galeriden fotoğraf seçerek devam edebilirsiniz.");
+        el.captureButton.textContent = "Kamerayı yeniden aç";
+        const reason = error && error.name === "NotAllowedError"
+          ? "Kamera izni verilmedi."
+          : "Kamera açılamadı.";
+        showMessage(el.cameraMessage, `${reason} Kamera izinlerini kontrol edin veya galeriden fotoğraf seçin.`, "warning");
+      }
+    }
+
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+        cameraStream = null;
+      }
+      el.camera.srcObject = null;
+      if (wakeLock) {
+        wakeLock.release().catch(() => {});
+        wakeLock = null;
+      }
+    }
+
+    function canvasToJpeg(canvas) {
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Fotoğraf JPEG biçimine dönüştürülemedi."));
+        }, "image/jpeg", 0.85);
+      });
+    }
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(",")[1]);
+        reader.onerror = () => reject(new Error("Fotoğraf okunamadı."));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function drawResizedImage(source, width, height) {
+      const scale = Math.min(1, 1600 / Math.max(width, height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Fotoğraf işlenemedi; tarayıcı canvas desteği vermiyor.");
+      context.drawImage(source, 0, 0, canvas.width, canvas.height);
+      return canvas;
+    }
+
+    async function normalizeImage(source, width, height) {
+      const canvas = drawResizedImage(source, width, height);
+      const blob = await canvasToJpeg(canvas);
+      const previewUrl = URL.createObjectURL(blob);
+      const base64 = await blobToBase64(blob);
+      const detailImages = await createDetailImages(canvas);
+      const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+      const fingerprint = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+      return { blob, previewUrl, base64, detailImages, fingerprint };
+    }
+
+    async function createDetailImages(canvas) {
+      const y = Math.floor(canvas.height / 2);
+      const regions = [
+        { label: "sol üst", left: 0, top: 0, right: Math.ceil(canvas.width * 0.55), bottom: Math.ceil(canvas.height * 0.55) },
+        { label: "sağ üst", left: Math.floor(canvas.width * 0.45), top: 0, right: canvas.width, bottom: Math.ceil(canvas.height * 0.55) },
+        { label: "sol alt", left: 0, top: Math.floor(canvas.height * 0.45), right: Math.ceil(canvas.width * 0.55), bottom: canvas.height },
+        { label: "sağ alt", left: Math.floor(canvas.width * 0.45), top: Math.floor(canvas.height * 0.45), right: canvas.width, bottom: canvas.height },
+        { label: "alt orta / yığın merkezi", left: Math.floor(canvas.width * 0.25), top: y, right: Math.ceil(canvas.width * 0.75), bottom: canvas.height }
+      ];
+      const images = [];
+      for (const region of regions) {
+        const width = region.right - region.left;
+        const height = region.bottom - region.top;
+        const scale = Math.min(1.5, 1200 / Math.max(width, height));
+        const crop = document.createElement("canvas");
+        crop.width = Math.max(1, Math.round(width * scale));
+        crop.height = Math.max(1, Math.round(height * scale));
+        const context = crop.getContext("2d");
+        if (!context) throw new Error("Fotoğraf yakın planları hazırlanamadı.");
+        context.drawImage(canvas, region.left, region.top, width, height, 0, 0, crop.width, crop.height);
+        images.push({ label: region.label, base64: await blobToBase64(await canvasToJpeg(crop)) });
+      }
+      return images;
+    }
+
+    async function loadImageFile(file) {
+      if (!file || !file.type.startsWith("image/")) {
+        showMessage(el.cameraMessage, "Lütfen geçerli bir görsel dosyası seçin.", "error");
+        return;
+      }
+      try {
+        if ("createImageBitmap" in window) {
+          const bitmap = await createImageBitmap(file);
+          try {
+            preparePreview(await normalizeImage(bitmap, bitmap.width, bitmap.height));
+          } finally {
+            bitmap.close();
+          }
+          return;
+        }
+        const objectUrl = URL.createObjectURL(file);
+        const image = new Image();
+        image.onload = async () => {
+          URL.revokeObjectURL(objectUrl);
+          try {
+            preparePreview(await normalizeImage(image, image.naturalWidth, image.naturalHeight));
+          } catch (error) {
+            showMessage(el.cameraMessage, error.message || "Fotoğraf işlenemedi.", "error");
+          }
+        };
+        image.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          showMessage(el.cameraMessage, "Fotoğraf açılamadı. Başka bir görsel deneyin.", "error");
+        };
+        image.src = objectUrl;
+      } catch (error) {
+        showMessage(el.cameraMessage, error.message || "Fotoğraf işlenemedi.", "error");
+      }
+    }
+
+    async function capturePhoto() {
+      if (!cameraStream) {
+        await startCamera();
+        return;
+      }
+      if (!el.camera.videoWidth || !el.camera.videoHeight) {
+        showMessage(el.cameraMessage, "Kamera görüntüsü henüz hazır değil. Birkaç saniye sonra tekrar deneyin.", "warning");
+        return;
+      }
+      try {
+        const canvas = drawResizedImage(el.camera, el.camera.videoWidth, el.camera.videoHeight);
+        preparePreview(await normalizeImage(canvas, canvas.width, canvas.height));
+      } catch (error) {
+        showMessage(el.cameraMessage, error.message || "Fotoğraf çekilemedi.", "error");
+      }
+    }
+
+    function preparePreview(photo) {
+      if (pendingPhoto && pendingPhoto.previewUrl) URL.revokeObjectURL(pendingPhoto.previewUrl);
+      if (shownPreviewUrl && shownPreviewUrl !== (pendingPhoto && pendingPhoto.previewUrl)) {
+        URL.revokeObjectURL(shownPreviewUrl);
+      }
+      pendingPhoto = photo;
+      pendingReview = null;
+      shownPreviewUrl = photo.previewUrl;
+      el.preview.src = photo.previewUrl;
+      el.preview.classList.remove("hidden");
+      el.camera.classList.add("hidden");
+      el.cameraPlaceholder.classList.add("hidden");
+      el.cameraActions.classList.add("hidden");
+      el.previewActions.classList.remove("hidden");
+      el.reviewPanel.classList.add("hidden");
+      clearMessage(el.cameraMessage);
+      stopCamera();
+    }
+
+    async function retakePhoto() {
+      if (pendingPhoto && pendingPhoto.previewUrl) URL.revokeObjectURL(pendingPhoto.previewUrl);
+      else if (shownPreviewUrl) URL.revokeObjectURL(shownPreviewUrl);
+      pendingPhoto = null;
+      pendingReview = null;
+      shownPreviewUrl = null;
+      el.preview.removeAttribute("src");
+      el.preview.classList.add("hidden");
+      el.previewActions.classList.add("hidden");
+      el.reviewPanel.classList.add("hidden");
+      el.cameraActions.classList.remove("hidden");
+      setCameraPlaceholder("Kamera yeniden başlatılıyor…");
+      await startCamera();
+    }
+
+    function parseGeminiResult(text) {
+      let cleaned = text.trim();
+      if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+      }
+      let result;
+      try {
+        result = JSON.parse(cleaned);
+      } catch (error) {
+        throw new Error("Gemini yanıtı geçerli JSON biçiminde değil. Fotoğrafı yeniden çekip deneyin.");
+      }
+      if (!result || typeof result !== "object" || !result.banknotlar || typeof result.banknotlar !== "object") {
+        throw new Error("Gemini yanıtında banknot sayımları bulunamadı.");
+      }
+      const counts = emptyCounts();
+      for (const denomination of BANKNOT_TURLERI) {
+        const value = result.banknotlar[String(denomination)];
+        if (!Number.isSafeInteger(value) || value < 0) {
+          throw new Error(`Gemini yanıtındaki ${denomination} TL sayısı geçersiz.`);
+        }
+        counts[String(denomination)] = value;
+      }
+      const coinCounts = emptyCoinCounts();
+      if (!result.madeni_paralar || typeof result.madeni_paralar !== "object" || Array.isArray(result.madeni_paralar)) {
+        throw new Error("Gemini yanıtındaki madeni para sayımları geçersiz.");
+      }
+      const returnedCoins = result.madeni_paralar;
+      for (const coin of MADENI_PARA_TURLERI) {
+        const value = returnedCoins[coin.key] === undefined ? 0 : returnedCoins[coin.key];
+        if (!Number.isSafeInteger(value) || value < 0) {
+          throw new Error(`Gemini yanıtındaki ${coin.label} sayısı geçersiz.`);
+        }
+        coinCounts[coin.key] = value;
+      }
+      const uncertain = result.belirsiz === undefined ? 0 : result.belirsiz;
+      if (!Number.isSafeInteger(uncertain) || uncertain < 0) {
+        throw new Error("Gemini yanıtındaki belirsiz banknot sayısı geçersiz.");
+      }
+      return { counts, coinCounts, uncertain, note: typeof result.not === "string" ? result.not : "" };
+    }
+
+    function apiErrorMessage(status) {
+      if (status === 400) return "İstek kabul edilmedi. API anahtarını ve model adını kontrol edin.";
+      if (status === 401 || status === 403) return "API anahtarı geçersiz veya bu model için yetkisiz. Ayarlardan anahtarı kontrol edin.";
+      if (status === 404) return "Gemini modeli bulunamadı. Ayarlardan model adını kontrol edin.";
+      if (status === 429) return "Gemini kullanım limiti aşıldı. Biraz bekleyip yeniden deneyin.";
+      if (status === 500 || status === 503) return "Gemini servisi şu anda kullanılamıyor. Biraz sonra yeniden deneyin.";
+      return `Gemini isteği başarısız oldu (HTTP ${status}). Lütfen yeniden deneyin.`;
+    }
+
+    async function requestGeminiCount(photo, instruction) {
+      const parts = [
+        { text: `${instruction}\n1. görsel: fotoğrafın tamamı. Sonraki görseller: aynı fotoğrafın örtüşen yakın plan kırpımlarıdır.` },
+        { inline_data: { mime_type: "image/jpeg", data: photo.base64 } }
+      ];
+      for (const detailImage of photo.detailImages) {
+        parts.push({ text: `Yakın plan (${detailImage.label}); aynı fotoğrafın bölgesi, ayrı para olarak sayma.` });
+        parts.push({ inline_data: { mime_type: "image/jpeg", data: detailImage.base64 } });
+      }
+      const response = await fetch(`${API_URL}${encodeURIComponent(settings.model)}:generateContent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": settings.apiKey
+        },
+        body: JSON.stringify({
+          contents: [{ parts }],
+          generationConfig: { temperature: 0, responseMimeType: "application/json" }
+        })
+      });
+      if (!response.ok) throw new Error(apiErrorMessage(response.status));
+      const data = await response.json();
+      const text = data && data.candidates && data.candidates[0] && data.candidates[0].content &&
+        data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
+        data.candidates[0].content.parts[0].text;
+      if (typeof text !== "string") {
+        throw new Error("Gemini yanıtında sayım sonucu bulunamadı. Fotoğrafı yeniden çekip deneyin.");
+      }
+      return parseGeminiResult(text);
+    }
+
+    function countsMatch(first, second) {
+      return first.uncertain === second.uncertain &&
+        BANKNOT_TURLERI.every((denomination) => first.counts[String(denomination)] === second.counts[String(denomination)]) &&
+        MADENI_PARA_TURLERI.every((coin) => first.coinCounts[coin.key] === second.coinCounts[coin.key]);
+    }
+
+    function describeCount(result) {
+      return JSON.stringify({ banknotlar: result.counts, madeni_paralar: result.coinCounts, belirsiz: result.uncertain });
+    }
+
+    function renderReview() {
+      if (!pendingReview) return;
+      const count = countPartyItems(pendingReview.counts, pendingReview.coinCounts, pendingReview.uncertain);
+      const total = amountInKurus(pendingReview.counts, pendingReview.coinCounts);
+      el.reviewModel.textContent = `Kullanılan Gemini modeli: ${settings.model}`;
+      el.reviewTotal.textContent = `Ön sayım: ${countFormatter.format(count)} adet · ${formatMoney(total)}`;
+      el.reviewCounts.replaceChildren();
+      for (const denomination of BANKNOT_TURLERI) {
+        const key = String(denomination);
+        el.reviewCounts.append(createStepperCard(`${denomination} TL`, pendingReview.counts[key], () => {
+          pendingReview.counts[key] = Math.max(0, pendingReview.counts[key] - 1);
+          renderReview();
+        }, () => {
+          pendingReview.counts[key] += 1;
+          renderReview();
+        }, (value) => {
+          pendingReview.counts[key] = value;
+        }, () => {
+          renderReview();
+        }));
+      }
+      for (const coin of MADENI_PARA_TURLERI) {
+        el.reviewCounts.append(createStepperCard(coin.label, pendingReview.coinCounts[coin.key], () => {
+          pendingReview.coinCounts[coin.key] = Math.max(0, pendingReview.coinCounts[coin.key] - 1);
+          renderReview();
+        }, () => {
+          pendingReview.coinCounts[coin.key] += 1;
+          renderReview();
+        }, (value) => {
+          pendingReview.coinCounts[coin.key] = value;
+        }, () => {
+          renderReview();
+        }));
+      }
+      if (pendingReview.uncertain > 0) {
+        el.reviewCounts.append(createStepperCard("Belirsiz", pendingReview.uncertain, () => {
+          pendingReview.uncertain = Math.max(0, pendingReview.uncertain - 1);
+          renderReview();
+        }, () => {
+          pendingReview.uncertain += 1;
+          renderReview();
+        }, (value) => {
+          pendingReview.uncertain = value;
+        }, () => {
+          renderReview();
+        }));
+      }
+    }
+
+    async function confirmCount() {
+      if (!pendingPhoto || !pendingReview) return;
+      if (parties.some((party) => party.fingerprint === pendingPhoto.fingerprint)) {
+        showMessage(el.cameraMessage, "Bu fotoğraf daha önce sayılmış. Aynı çekim ikinci kez eklenmedi.", "warning");
+        return;
+      }
+      parties.unshift({
+        id: nextPartyId++,
+        fingerprint: pendingPhoto.fingerprint,
+        counts: { ...pendingReview.counts },
+        coinCounts: { ...pendingReview.coinCounts },
+        uncertain: pendingReview.uncertain,
+        note: pendingReview.note,
+        createdAt: new Date()
+      });
+      render();
+      pendingPhoto = null;
+      pendingReview = null;
+      el.previewActions.classList.add("hidden");
+      el.reviewPanel.classList.add("hidden");
+      el.cameraActions.classList.remove("hidden");
+      el.captureButton.textContent = "Yeni fotoğraf çek";
+      showMessage(el.cameraMessage, "Parti eklendi. Son fotoğraf önizlemesi yeni çekim seçeneğine kadar ekranda kalır.", "success");
+    }
+
+    async function countPhoto() {
+      if (!pendingPhoto || isCounting) return;
+      if (!settings.apiKey) {
+        el.settingsCard.classList.remove("hidden");
+        showMessage(el.settingsMessage, "Sayım yapmak için önce Gemini API anahtarınızı kaydedin.", "warning");
+        el.settingsCard.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      if (parties.some((party) => party.fingerprint === pendingPhoto.fingerprint)) {
+        showMessage(el.cameraMessage, "Bu fotoğraf daha önce sayılmış. Aynı çekim ikinci kez eklenmedi.", "warning");
+        return;
+      }
+      isCounting = true;
+      el.addButton.disabled = true;
+      el.addButton.innerHTML = '<span class="busy"><span class="spinner" aria-hidden="true"></span>Sayılıyor...</span>';
+      showMessage(el.cameraMessage, "Fotoğrafın tamamı ve yakın planları iki kez sayılıyor; lütfen bekleyin.", "");
+      try {
+        const firstCount = await requestGeminiCount(pendingPhoto, SAYIM_TALIMATI);
+        showMessage(el.cameraMessage, "İlk sayım tamamlandı; eksik veya fazla sayımı önlemek için ikinci kez kontrol ediliyor.", "");
+        const secondCount = await requestGeminiCount(pendingPhoto, DOGRULAMA_TALIMATI);
+        let result = secondCount;
+        if (!countsMatch(firstCount, secondCount)) {
+          showMessage(el.cameraMessage, "İki sayım farklı çıktı; fotoğraf son kez incelenip sonuçlar uzlaştırılıyor.", "warning");
+          const reconciliationPrompt = `Görseldeki banknot ve madeni paraları yeniden incele. İlk tahmin: ${describeCount(firstCount)} İkinci tahmin: ${describeCount(secondCount)} Görüntüdeki fiziksel paralara göre sonucu belirle; aynı parayı iki kez sayma. Banknotları kupüre, madeni paraları 1/5/10/25/50 kuruş ve 1 TL türlerine göre say. Cevabı SADECE şu JSON formatında ver: {"banknotlar": {"5":0,"10":0,"20":0,"50":0,"100":0,"200":0,"500":0,"1000":0}, "madeni_paralar": {"1_kurus":0,"5_kurus":0,"10_kurus":0,"25_kurus":0,"50_kurus":0,"1_tl":0}, "belirsiz": 0, "not": ""}`;
+          result = await requestGeminiCount(pendingPhoto, reconciliationPrompt);
+          result.note = [result.note, "İlk iki sayım farklı çıktığı için sonuç yeniden incelendi; fotoğraftaki banknotları ve parti sayısını kontrol edin."].filter(Boolean).join(" ");
+        }
+        pendingReview = result;
+        renderReview();
+        el.previewActions.classList.add("hidden");
+        el.reviewPanel.classList.remove("hidden");
+        if (result.note) {
+          showMessage(el.cameraMessage, `Ön sayım hazır. ${result.note}`, "warning");
+        } else {
+          showMessage(el.cameraMessage, "Ön sayım hazır. Fotoğrafla karşılaştırın; eksik adet varsa + ile düzeltip partiye ekleyin.", "warning");
+        }
+      } catch (error) {
+        showMessage(el.cameraMessage, error.message || "Sayım sırasında beklenmeyen bir hata oluştu.", "error");
+      } finally {
+        isCounting = false;
+        el.addButton.disabled = false;
+        el.addButton.textContent = "Say ve kontrol et";
+      }
+    }
+
+    function partyTotal(party) {
+      return amountInKurus(party.counts, party.coinCounts || emptyCoinCounts());
+    }
+
+    function makeElement(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function render() {
+      const totals = emptyCounts();
+      const coinTotals = emptyCoinCounts();
+      let uncertain = 0;
+      for (const party of parties) {
+        for (const denomination of BANKNOT_TURLERI) {
+          totals[String(denomination)] += countValue(party.counts, String(denomination));
+        }
+        for (const coin of MADENI_PARA_TURLERI) {
+          coinTotals[coin.key] += countValue(party.coinCounts, coin.key);
+        }
+        uncertain += party.uncertain;
+      }
+
+      const itemCount = countPartyItems(totals, coinTotals, uncertain);
+      const grandTotal = amountInKurus(totals, coinTotals);
+      el.grandTotal.textContent = formatMoney(grandTotal);
+      el.noteCount.textContent = `${countFormatter.format(itemCount)} adet (banknot + madeni para${uncertain ? " + belirsiz" : ""})`;
+      el.breakdown.replaceChildren();
+      for (const denomination of BANKNOT_TURLERI) {
+        const count = totals[String(denomination)];
+        const row = makeElement("li", count ? "" : "zero-row");
+        row.append(
+          makeElement("span", "", `${denomination} TL × ${countFormatter.format(count)}`),
+          makeElement("span", "", `= ${formatMoney(denomination * 100 * count)}`)
+        );
+        el.breakdown.append(row);
+      }
+      for (const coin of MADENI_PARA_TURLERI) {
+        const count = coinTotals[coin.key];
+        const row = makeElement("li", count ? "" : "zero-row");
+        row.append(
+          makeElement("span", "", `${coin.label} × ${countFormatter.format(count)}`),
+          makeElement("span", "", `= ${formatMoney(coin.value * count)}`)
+        );
+        el.breakdown.append(row);
+      }
+
+      if (uncertain > 0) {
+        showMessage(el.uncertainWarning, `${countFormatter.format(uncertain)} belirsiz banknot var. Parti sayımlarını kontrol edin.`, "warning");
+      } else {
+        clearMessage(el.uncertainWarning);
+      }
+
+      el.parties.replaceChildren();
+      if (parties.length === 0) {
+        el.parties.append(makeElement("p", "empty-state", "Henüz sayım partisi yok. İlk fotoğrafınızı çekin."));
+        return;
+      }
+      for (const party of parties) {
+        const card = makeElement("article", "party");
+        const head = makeElement("div", "party-head");
+        const details = makeElement("div");
+        details.append(
+          makeElement("p", "party-title", `Parti ${party.id}`),
+          makeElement("p", "party-meta", `${party.createdAt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })} · ${formatMoney(partyTotal(party))} · ${countPartyItems(party.counts, party.coinCounts || emptyCoinCounts(), party.uncertain)} adet · ${party.uncertain} belirsiz`)
+        );
+        const deleteButton = makeElement("button", "delete-button", "Sil");
+        deleteButton.type = "button";
+        deleteButton.setAttribute("aria-label", `Parti ${party.id} sayımını sil`);
+        deleteButton.addEventListener("click", () => {
+          parties = parties.filter((item) => item.id !== party.id);
+          render();
+        });
+        head.append(details, deleteButton);
+        card.append(head);
+
+        const grid = makeElement("div", "edit-grid");
+        for (const denomination of BANKNOT_TURLERI) {
+          const key = String(denomination);
+          grid.append(createStepperCard(`${denomination} TL`, countValue(party.counts, key), () => {
+            party.counts[key] = Math.max(0, countValue(party.counts, key) - 1);
+            render();
+          }, () => {
+            party.counts[key] = countValue(party.counts, key) + 1;
+            render();
+          }, (value) => {
+            party.counts[key] = value;
+          }, () => {
+            render();
+          }));
+        }
+        for (const coin of MADENI_PARA_TURLERI) {
+          grid.append(createStepperCard(coin.label, countValue(party.coinCounts, coin.key), () => {
+            party.coinCounts[coin.key] = Math.max(0, countValue(party.coinCounts, coin.key) - 1);
+            render();
+          }, () => {
+            party.coinCounts[coin.key] = countValue(party.coinCounts, coin.key) + 1;
+            render();
+          }, (value) => {
+            party.coinCounts[coin.key] = value;
+          }, () => {
+            render();
+          }));
+        }
+        if (party.uncertain > 0) {
+          grid.append(createStepperCard("Belirsiz", party.uncertain, () => {
+            party.uncertain = Math.max(0, party.uncertain - 1);
+            render();
+          }, () => {
+            party.uncertain += 1;
+            render();
+          }, (value) => {
+            party.uncertain = value;
+          }, () => {
+            render();
+          }));
+        }
+        card.append(grid);
+        if (party.note) card.append(makeElement("p", "party-meta", `Not: ${party.note}`));
+        el.parties.append(card);
+      }
+    }
+
+    el.settingsToggle.addEventListener("click", () => {
+      el.settingsCard.classList.toggle("hidden");
+      if (!el.settingsCard.classList.contains("hidden")) el.settingsCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    el.settingsForm.addEventListener("submit", saveSettings);
+    el.manualForm.addEventListener("submit", addManualParty);
+    el.clearKeyButton.addEventListener("click", clearApiKey);
+    el.captureButton.addEventListener("click", capturePhoto);
+    el.galleryButton.addEventListener("click", () => el.fileInput.click());
+    el.changeImageButton.addEventListener("click", () => el.fileInput.click());
+    el.fileInput.addEventListener("change", async (event) => {
+      const file = event.target.files && event.target.files[0];
+      await loadImageFile(file);
+      el.fileInput.value = "";
+    });
+    el.addButton.addEventListener("click", countPhoto);
+    el.retakeButton.addEventListener("click", retakePhoto);
+    el.confirmCountButton.addEventListener("click", confirmCount);
+    el.reviewRetakeButton.addEventListener("click", retakePhoto);
+    el.resetButton.addEventListener("click", () => {
+      if (!parties.length) return;
+      if (window.confirm("Tüm fotoğraf ve elle girilen sayım partileri silinsin mi?")) {
+        parties = [];
+        render();
+      }
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && cameraStream) requestWakeLock();
+      else if (wakeLock) {
+        wakeLock.release().catch(() => {});
+        wakeLock = null;
+      }
+    });
+    window.addEventListener("pagehide", stopCamera);
+
+    readSettings();
+    if (![...el.modelName.options].some((option) => option.value === settings.model)) {
+      const savedModelOption = document.createElement("option");
+      savedModelOption.value = settings.model;
+      savedModelOption.textContent = `${settings.model} (kayıtlı özel model)`;
+      el.modelName.append(savedModelOption);
+    }
+    el.modelName.value = settings.model;
+    updateApiKeyStatus();
+    if (!settings.apiKey) el.settingsCard.classList.remove("hidden");
+    initializeManualInputs();
+    render();
+    startCamera();
+  </script>
+</body>
+</html>
